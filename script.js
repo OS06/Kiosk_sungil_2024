@@ -1,26 +1,83 @@
-// Load and display attendance history
-d3.csv("attendance_history.csv").then(data => {
-    generateTable("#attendance-table", data);
-}).catch(error => console.error("Error loading attendance history:", error));
+class TableCsv {
+  /**
+   * @param {HTMLTableElement} root The table element which will display the CSV data.
+   */
+  constructor(root) {
+    this.root = root;
+  }
 
-// Function to generate a table
-function generateTable(selector, data) {
-    var table = d3.select(selector).append("table");
-    var thead = table.append("thead");
-    var tbody = table.append("tbody");
+  /**
+   * Clears existing data in the table and replaces it with new data.
+   *
+   * @param {string[][]} data A 2D array of data to be used as the table body
+   * @param {string[]} headerColumns List of headings to be used
+   */
+  update(data, headerColumns = []) {
+    this.clear();
+    this.setHeader(headerColumns);
+    this.setBody(data);
+  }
 
-    // Append header row
-    thead.append("tr").selectAll("th")
-        .data(d3.keys(data[0]))
-        .enter().append("th")
-        .text(d => d);
+  /**
+   * Clears all contents of the table (incl. the header).
+   */
+  clear() {
+    this.root.innerHTML = "";
+  }
 
-    // Append data rows
-    tbody.selectAll("tr")
-        .data(data)
-        .enter().append("tr")
-        .selectAll("td")
-        .data(row => d3.values(row))
-        .enter().append("td")
-        .text(d => d);
+  /**
+   * Sets the table header.
+   *
+   * @param {string[]} headerColumns List of headings to be used
+   */
+  setHeader(headerColumns) {
+    this.root.insertAdjacentHTML(
+      "afterbegin",
+      `
+            <thead>
+                <tr>
+                    ${headerColumns.map((text) => `<th>${text}</th>`).join("")}
+                </tr>
+            </thead>
+        `
+    );
+  }
+
+  /**
+   * Sets the table body.
+   *
+   * @param {string[][]} data A 2D array of data to be used as the table body
+   */
+  setBody(data) {
+    const rowsHtml = data.map((row) => {
+      return `
+                <tr>
+                    ${row.map((text) => `<td>${text}</td>`).join("")}
+                </tr>
+            `;
+    });
+
+    this.root.insertAdjacentHTML(
+      "beforeend",
+      `
+            <tbody>
+                ${rowsHtml.join("")}
+            </tbody>
+        `
+    );
+  }
 }
+
+const tableRoot = document.querySelector("#csvRoot");
+const csvFileInput = document.querySelector("#csvFileInput");
+const tableCsv = new TableCsv(tableRoot);
+
+csvFileInput.addEventListener("change", (e) => {
+  Papa.parse(csvFileInput.files[0], {
+    delimiter: ",",
+    skipEmptyLines: true,
+    complete: (results) => {
+      tableCsv.update(results.data.slice(1), results.data[0]);
+    }
+  });
+});
